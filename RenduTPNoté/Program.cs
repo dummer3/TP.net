@@ -5,16 +5,22 @@ using System.Collections.Generic;
 
 namespace ConsoleVersion
 {
+    /// <summary>
+    /// Contain the <c>Main</c> function
+    /// </summary>
     class Program
     {
         public static void Main()
         {
-            GestionnaireContact g = new GestionnaireContact();
+            //Our manager 
+            ContactManager g = new ContactManager();
             bool stop = false;
             string choice;
 
+            // while our user want to do an action
             while (!stop)
             {
+                // Menu
                 Console.WriteLine(
                     $"Option:{System.Environment.NewLine}" +
                     $"sortir/quitter {System.Environment.NewLine}" +
@@ -26,6 +32,7 @@ namespace ConsoleVersion
                     $"ajouter contact  {System.Environment.NewLine}"
                 );
 
+                // Action
                 choice = Console.ReadLine();
                 switch (choice.ToLower().Replace(" ", ""))
                 {

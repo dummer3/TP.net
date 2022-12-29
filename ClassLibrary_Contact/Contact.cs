@@ -6,47 +6,94 @@ using System.Text;
 
 namespace ClassLibrary_Contact
 {
-    public enum Lien { AMI, COLLEGUE, RELATION, RESEAU, NONDEFINI };
+    /// <summary>
+    /// <c>Lien</c> is an enumeration to represent social link between <c>Contact</c>
+    /// </summary>
+    public enum Link { AMI, COLLEGUE, RELATION, RESEAU, NONDEFINI };
 
+    /// <summary>
+    /// <c>Contact</c>: class which represent an indivudual 
+    /// </summary>
     [Serializable]
-    public class Contact : Contenant
+    public class Contact : Content
     {
-        public string Nom { get; set; }
-        public string Prenom { get; set; }
+        /// <value> Name of the indivudual </value>
+        public string Name { get; set; }
 
-        private string courriel; 
-        public static string courrielStr(string s){
-            string r = "unknown";    
+        /// <value> Fist name of the indivudual </value>
+        public string FirstName { get; set; }
+
+        /// <value> Society of the indivudual </value>
+        public string Society { get; set; }
+
+        /// <value> Link of the indivudual </value>
+        public Link Link { get; set; }
+
+        /// <value> The email of the indivudual </value>
+        private readonly string _email;
+
+        /// <summary>
+        /// verify if a string can be an email
+        /// </summary>
+        /// <param name="s"> the string to verify</param>
+        /// <returns> s if it's an email, unknown else</returns>
+        public static string CourrielStr(string s)
+        {
+            string r = "unknown";
             try
-                {
+            {
                 MailAddress m = new MailAddress(s);
                 r = s;
-                }
-                catch (FormatException exception)
-                {
-                    Console.WriteLine($"Erreur, Email non valide: {exception.Message}");
-                } 
+            }
+            catch (FormatException exception)
+            {
+                Console.WriteLine($"Erreur, Email non valide: {exception.Message}");
+            }
             return r;
         }
+        /// <summary>
+        /// Default constructor
+        /// By default, the email and link are unknown, everything else is ___
+        /// </summary>
+        public Contact() : this("___", "___", "unknown", "___", Link.NONDEFINI, DateTime.Now, DateTime.Now) { }
 
+        /// <summary>
+        /// Constructor with every parameters except the DateTimes
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="firstName"></param>
+        /// <param name="email"></param>
+        /// <param name="society"></param>
+        /// <param name="link"></param>
+        public Contact(string name, string firstName, string email, string society, Link link) : this(name, firstName, email, society, link, DateTime.Now, DateTime.Now) { }
 
-        public string Societe { get; set; }
-        public Lien Lien { get; set;}
-
-        public Contact(string nom, string prenom, string courriel, string societe, Lien lien, DateTime creationTime, DateTime modificationTime) : base(creationTime, modificationTime)
+        /// <summary>
+        /// Constructor with all the parameters
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="firsName"></param>
+        /// <param name="email"></param>
+        /// <param name="society"></param>
+        /// <param name="link"></param>
+        /// <param name="creationTime"></param>
+        /// <param name="modificationTime"></param>
+        public Contact(string name, string firsName, string email, string society, Link link, DateTime creationTime, DateTime modificationTime) : base(creationTime, modificationTime)
         {
-            Nom = nom;
-            Prenom = prenom;
-            this.courriel = courrielStr(courriel);
-            Societe = societe;
-            Lien = lien;
+            Name = name;
+            FirstName = firsName;
+            this._email = CourrielStr(email);
+            Society = society;
+            Link = link;
         }
 
-        public Contact() : this("___", "___", "___@___.___", "___", Lien.NONDEFINI, DateTime.Now, DateTime.Now){}
-        public Contact(string nom, string prenom, string courriel, string societe, Lien lien) : this(nom,prenom,courriel,societe,lien, DateTime.Now, DateTime.Now) { }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns> Representation of our contact with a string</returns>
         public override string ToString()
         {
-            return $" Contact {Nom} {Prenom} -- Email {courriel} -- Lien {Lien} -- Societe {Societe} {System.Environment.NewLine}";
+            return $" Contact [{CreationTime}|{ModificationTime}] {Name} {FirstName} -- Email {_email} -- Lien {Link} -- Societe {Society}{System.Environment.NewLine}";
         }
     }
 }

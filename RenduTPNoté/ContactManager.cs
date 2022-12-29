@@ -4,59 +4,73 @@ using System.IO;
 using System.Text;
 using ClassLibrary_Serialisation;
 using System.Security.Cryptography;
-
 using System.Linq;
-
 using System.Security.Principal;
 using Ionic.Zip;
 
 namespace ClassLibrary_Contact
 {
-    class GestionnaireContact
+    /// <summary>
+    /// <c>ContactManager</c>: class which manage every action concerning our contact
+    /// </summary>
+    class ContactManager
     {
-        private Dossier root;
-        private Dossier current;
+        private Directory _root;
+        private Directory _current;
 
-        private readonly GestionnaireFichierFact<Contenant> xmlSerial = new GestionnaireXML<Contenant>();
-        private readonly GestionnaireFichierFact<Contenant> binSerial = new GestionnaireBinaire<Contenant>();
+        private readonly SerializationManagerFact<Content> _xmlSerial = new XMLSerializationManager<Content>();
+        private readonly SerializationManagerFact<Content> _binSerial = new BinarySerializationManager<Content>();
 
-        public GestionnaireContact()
+        /// <summary>
+        /// Default Constructor
+        /// </summary>
+        public ContactManager()
         {
-            root = new Dossier("root");
-            current = root;
+            _root = new Directory("root");
+            _current = _root;
         }
 
+        /// <summary>
+        /// Print our data since the root folder
+        /// </summary>
+        /// <returns> The representation </returns>
         public string Aff()
         {
+            // Limited to 10 actually, but can be managed for largest scale
             int posLevel = 0;
-            List<List<Dossier>> dossierperLevel = new List<List<Dossier>>(10);
+            List<List<Directory>> dossierperLevel = new List<List<Directory>>(10);
             List<List<Contact>> contactperLevel = new List<List<Contact>>(10);
 
             for (int i = 0; i < 10; i++)
             {
-                dossierperLevel.Add(new List<Dossier>());
+                dossierperLevel.Add(new List<Directory>());
                 contactperLevel.Add(new List<Contact>());
             }
             string result = "";
-            dossierperLevel[0].Add(root);
+            dossierperLevel[0].Add(_root);
 
+            // while we haven't browse every content
             while (dossierperLevel[0].Count != 0 || posLevel > 0)
             {
+                // while we have folder
                 while (dossierperLevel[posLevel].Count != 0)
                 {
+                    // Explore a new folder and save all information
                     result += string.Concat(System.Linq.Enumerable.Repeat("   | ", posLevel)) + $"--> {dossierperLevel[posLevel][0]}";
                     posLevel++;
-                    foreach (Contenant c in dossierperLevel[posLevel - 1][0].contents)
+                    foreach (Content c in dossierperLevel[posLevel - 1][0].contents)
                     {
-                        if (c is Dossier dossier)
+                        if (c is Directory dossier)
                             dossierperLevel[posLevel].Add(dossier);
                         else
                             contactperLevel[posLevel].Add((Contact)c);
                     }
                     dossierperLevel[posLevel - 1].RemoveAt(0);
                 }
+                // while we have contact
                 while (posLevel >= 0 && dossierperLevel[posLevel].Count == 0)
                 {
+                    // Print every contact
                     while (contactperLevel[posLevel].Count != 0)
                     {
                         result += string.Concat(System.Linq.Enumerable.Repeat("   | ", posLevel)) + $"+-- {contactperLevel[posLevel][0]}";
@@ -71,41 +85,63 @@ namespace ClassLibrary_Contact
             return result;
         }
 
+        /// <summary>
+        /// Get a Key from a file
+        /// </summary>
+        /// <returns> The key </returns>
         private byte[] GetKey()
         {
             byte[] key = null;
             string choice;
+
+            //Ask Key Name (for our file)
             Console.WriteLine("Entrer le nom de votre clé");
             choice = Console.ReadLine();
-            key = Global.VerificationFile(file => File.ReadAllBytes(Global.Path + file), "key_" + choice);
+            key = PathInformation.VerificationFile(file => File.ReadAllBytes(PathInformation.Path + file), "key_" + choice);
             return key;
         }
 
+        /// <summary>
+        /// Create a key and store it in a new file
+        /// </summary>
+        /// <returns></returns>
         private byte[] CreateKey()
         {
             string choice;
             AesManaged aes = new AesManaged();
 
+            // Ask the FileName 
             aes.GenerateKey();
             Console.WriteLine("Nouvelle clé crée, Choissisez le nom de clé:");
             choice = Console.ReadLine();
-            Global.VerificationFile(file => File.WriteAllBytes(Global.Path + file, aes.Key), "key_" + choice);
+            PathInformation.VerificationFile(file => File.WriteAllBytes(PathInformation.Path + file, aes.Key), "key_" + choice);
             return aes.Key;
         }
 
+        /// <summary>
+        /// Create a key and store it in a file name <c>keyName</c>
+        /// </summary>
+        /// <param name="keyName"> the name of the file </param>
+        /// <returns> the key </returns>
         private byte[] CreateKey(string keyName)
         {
             Console.WriteLine($"Nouvelle clé crée de nom \"{keyName}\"");
             AesManaged aes = new AesManaged();
             aes.GenerateKey();
-            Global.VerificationFile(file => File.WriteAllBytes(Global.Path + file, aes.Key), "key_" + keyName);
+            PathInformation.VerificationFile(file => File.WriteAllBytes(PathInformation.Path + file, aes.Key), "key_" + keyName);
             return aes.Key;
         }
 
+        /// <summary>
+        /// Give a key depending of the user choice
+        /// </summary>
+        /// <returns> The key </returns>
         private byte[] QuestionCrypto()
         {
             string choice;
             byte[] key;
+
+            // Ask for existing key
             do
             {
                 Console.WriteLine("Voulez-vous utilisez une clé existante? o/n");
@@ -120,6 +156,7 @@ namespace ClassLibrary_Contact
                 }
                 else
                 {
+                    // Ask for create a new key
                     do
                     {
                         Console.WriteLine("Voulez-vous créer une nouvelle clé ou utilisez votre SID? o/n");
@@ -150,75 +187,95 @@ namespace ClassLibrary_Contact
             }
 
         }
-        private void Question(ref string file, ref string choice)
+
+        /// <summary>
+        /// Ask for the serialization format and the file name
+        /// </summary>
+        /// <param name="file"> name of the file </param>
+        /// <param name="choice"> format choice for serialization </param>
+        private void SerializationQuestion(ref string file, ref string choice)
         {
+            // Ask for format
             do
             {
                 Console.WriteLine("format binaire (b) ou XML (x)");
                 choice = Console.ReadLine();
             } while (choice != "b" && choice != "x");
 
+            // Ask for file name
             Console.WriteLine("Entrer le nom de votre fichier");
             file = Console.ReadLine();
         }
+
+        /// <summary>
+        /// Load Information from a file
+        /// </summary>
         public void Charger()
         {
-            string choice = "non", choice1 = "non",choice2 = "non";
-            string file = "";
-            Question(ref file, ref choice);
-
+            string choiceSerialization, choiceZip, choiceKey, file, decrypt;
+            file = choiceSerialization = string.Empty;
             byte[] key;
 
+            SerializationQuestion(ref file, ref choiceSerialization);
+
+
+            // Zip part with password
             Console.WriteLine("Votre fichier est-il compressé? (o/n)");
-            choice1 = Console.ReadLine();
-            if (choice1 == "o")
+            choiceZip = Console.ReadLine();
+            if (choiceZip == "o")
             {
                 int attempt = 3;
                 while (attempt >= 0)
                 {
                     Console.Write("Mot de passe: ");
-                    choice2 = Console.ReadLine();
-                    using (ZipFile zip = ZipFile.Read($"{Global.entireFileName(file)}.zip"))
+                    string pwd = Console.ReadLine();
+                    using (ZipFile zip = ZipFile.Read($"{PathInformation.EntireFileName(file)}.zip"))
                     {
-                        zip.Password = choice2;
+                        zip.Password = pwd;
                         try
                         {
-                            zip.ExtractAll(Global.Path);
+                            zip.ExtractAll(PathInformation.Path);
                             break;
                         }
                         catch
                         {
                             if (attempt > 0)
-                            {
                                 Console.WriteLine($"Mot de passe Incorecte, plus que {--attempt} essaie(s)");
-                            }
                             else
                             {
                                 Console.WriteLine("Mot de passe Incorecte, plus aucune tentative, suppression du fichier");
-
                                 attempt--;
                             }
-
-
                         }
                     }
-                    if (attempt < 0) { File.Delete($"{Global.entireFileName(file)}.zip"); return; }
+                    if (attempt < 0) { File.Delete($"{PathInformation.EntireFileName(file)}.zip"); return; }
                 }
             }
 
+            //
             try
             {
+                // Ask for existing key
                 Console.WriteLine("Voulez-vous utiliser une clé? o/n");
-                choice2 = Console.ReadLine();
-                key = choice2 == "o" ? GetKey() : Encoding.Default.GetBytes(WindowsIdentity.GetCurrent().User.ToString()).Take(32).ToArray();
-                string decrypt = GestionnaireSécurité.Decrypt(File.ReadAllBytes(Global.entireFileName("enc_" + file)), key);
-                if (choice1 == "o")
-                    File.Delete(Global.entireFileName("enc_" + file));
-                if (choice == "b")
-                    root = (Dossier)binSerial.Deserialization(decrypt);
+                choiceKey = Console.ReadLine();
+
+                // if the choice is yes, we get the key, else we use the SID as a key
+                key = choiceKey == "o" ? GetKey() : Encoding.Default.GetBytes(WindowsIdentity.GetCurrent().User.ToString()).Take(32).ToArray();
+
+                // We decrypt the file
+                decrypt = SecurityManager.Decrypt(File.ReadAllBytes(PathInformation.EntireFileName("enc_" + file)), key);
+
+                // In the case of a zip, we must delete this file
+                if (choiceZip == "o")
+                    File.Delete(PathInformation.EntireFileName("enc_" + file));
+
+                // Depending of the serialization format
+                if (choiceSerialization == "b")
+                    _root = (Directory)_binSerial.Deserialization(decrypt);
                 else
-                    root = (Dossier)xmlSerial.Deserialization(decrypt);
-                current = root;
+                    _root = (Directory)_xmlSerial.Deserialization(decrypt);
+
+                _current = _root;
             }
             catch (Exception ex) when (ex is FileNotFoundException || ex is UnauthorizedAccessException)
             {
@@ -237,53 +294,68 @@ namespace ClassLibrary_Contact
             }
         }
 
+        /// <summary>
+        /// Save information in a file
+        /// </summary>
         public void Sauvegarder()
         {
-            string choice = "non";
-            string file = "";
-            Question(ref file, ref choice);
-
+            string Serializationchoice = string.Empty;
+            string file = string.Empty;
+            string seria;
             byte[] key = QuestionCrypto();
 
-            string seria;
-            if (choice == "b")
+            SerializationQuestion(ref file, ref Serializationchoice);
 
-                seria = binSerial.Serialization(root);
+            //Depending of the format choose 
+            if (Serializationchoice == "b")
+                seria = _binSerial.Serialization(_root);
             else
-                seria = xmlSerial.Serialization(root);
+                seria = _xmlSerial.Serialization(_root);
+            
+            //Encrypt our data before writing it on a file
+            File.WriteAllBytes(PathInformation.EntireFileName("enc_" + file), SecurityManager.Encrypt(seria, key));
 
-            File.WriteAllBytes(Global.entireFileName("enc_" + file), GestionnaireSécurité.Encrypt(seria, key));
-
+            // Zip part
             Console.WriteLine("Voulez-vous compresser votre fichier et mettre un mot de passe? (o/n)");
-            choice = Console.ReadLine();
-            if (choice == "o")
+            Serializationchoice = Console.ReadLine();
+            if (Serializationchoice == "o")
             {
                 Console.Write("Mot de passe: ");
-                choice = Console.ReadLine();
+                Serializationchoice = Console.ReadLine();
+
+                // Create the zip, put the file inside and delete it after
                 using ZipFile zip = new ZipFile();
-                zip.Password = choice;
-                zip.AddFile(Global.entireFileName("enc_" + file), "");
-                zip.Save($"{Global.entireFileName(file)}.zip");
-                File.Delete(Global.entireFileName("enc_" + file));
+                zip.Password = Serializationchoice;
+                zip.AddFile(PathInformation.EntireFileName("enc_" + file), "");
+                zip.Save($"{PathInformation.EntireFileName(file)}.zip");
+                File.Delete(PathInformation.EntireFileName("enc_" + file));
             }
 
         }
 
+        /// <summary>
+        /// Add a <c>Directory</c> inside our manager (inside the current folder)
+        /// </summary>
         public void AjoutDossier()
         {
+            // Get all parameters
             Console.WriteLine("Nom[ DateTime creationTime (format dd/mm/yyyy or dd:mm:yyyy)]");
             string[] s = Console.ReadLine().Split(" ");
-            Dossier ajoutD;
+            Directory ajoutD;
             try
             {
+                // Create the folder
                 if (s.Length > 1)
-                    ajoutD = new Dossier(s[0], Dossier.DateFromString(s[1]), Dossier.DateFromString(s[2]));
+                    ajoutD = new Directory(s[0], Directory.DateFromString(s[1]), Directory.DateFromString(s[2]));
                 else
-                    ajoutD = new Dossier(s[0]);
-                ajoutD.Parent = current;
-                current.AddStockable(ajoutD);
-                current = ajoutD;
+                    ajoutD = new Directory(s[0]);
+
+                // Add it
+                ajoutD.Parent = _current;
+                _current.AddStockable(ajoutD);
+                _current = ajoutD;
             }
+            // If the format is not respected
             catch (Exception e)
             {
                 Console.WriteLine("the folder can't be create, error\n" + e.Message);
@@ -291,72 +363,97 @@ namespace ClassLibrary_Contact
 
         }
 
+        /// <summary>
+        /// Add a <c>Contact</c> inside our manager (inside the current folder)
+        /// </summary>
         public void AjoutContact()
         {
-            Console.WriteLine("nom prenom courriel societe lien[ creationTime modificationTime  (format dd/mm/yyyy or dd:mm:yyyy)]");
+            Link l;
+            Contact ajoutC;
+
+            // Get the parameters
+            Console.WriteLine("nom prenom courriel societe lien[ creationTime modificationTime (format dd/mm/yyyy or dd:mm:yyyy)]");
             string[] s = Console.ReadLine().Split(" ");
-            Lien l;
-            Contact ajoutC = new Contact();
+
+            // Verify the Link
             try
             {
-                l = (Lien)Enum.Parse(typeof(Lien), s[4]);
+                l = (Link)Enum.Parse(typeof(Link), s[4]);
             }
             catch (Exception e)
             {
                 Console.WriteLine("Link not understand\n" + e.Message);
-                l = Lien.NONDEFINI;
+                l = Link.NONDEFINI;
             }
+
             try
             {
+                // Create the Contact
                 if (s.Length > 5)
-                    ajoutC = new Contact(s[0], s[1], s[2], s[3], l, Dossier.DateFromString(s[5]), Dossier.DateFromString(s[6]));
+                    ajoutC = new Contact(s[0], s[1], s[2], s[3], l, Directory.DateFromString(s[5]), Directory.DateFromString(s[6]));
                 else
                     ajoutC = new Contact(s[0], s[1], s[2], s[3], l);
-                current.AddStockable(ajoutC);
+
+                // Add it
+                _current.AddStockable(ajoutC);
             }
+            // If the format is not respected
             catch (Exception e)
             {
                 Console.WriteLine("the contact can't be create, error\n" + e.Message);
             }
         }
 
+        /// <summary>
+        /// Change the current folder
+        /// </summary>
         public void ChangerCurrent()
         {
-            string s = String.Empty;
-            Dossier temp = current;
-            while (s != "stop")
+            string choice = String.Empty;
+            Directory temp = _current;
+
+            // While the user want to change
+            while (choice != "stop")
             {
-                Console.WriteLine($"=== {current}");
+                // Print the current folder
+                Console.WriteLine($"=== {_current}");
                 int i = 1;
-                foreach (Dossier d in current.contents.OfType<Dossier>())
+                foreach (Directory d in _current.contents.OfType<Directory>())
                     Console.WriteLine($"{i++} {d}");
+
+                // The user choose an action
                 Console.WriteLine("Choissisez le prochain sous dossier en fonction du rang (i==index) ou de son nom (n==nom)\nUtilisez .. pour le répertoire parent ou s'arreter avec stop");
-                s = Console.ReadLine();
+                choice = Console.ReadLine();
 
                 try
                 {
-                    switch (s)
+                    switch (choice)
                     {
+                        // Use the index
                         case string a when a.Contains("i=="):
-                            current = current.contents.OfType<Dossier>().ElementAt(int.Parse(a.Split("==")[1]) - 1);
-                            current.Parent = temp;
-                            temp = current;
+                            _current = _current.contents.OfType<Directory>().ElementAt(int.Parse(a.Split("==")[1]) - 1);
+                            _current.Parent = temp;
+                            temp = _current;
                             break;
+                        // Use the folder name
                         case string a when a.Contains("n=="):
-                            current = current.contents.OfType<Dossier>().First(x => x.Nom == a.Split("==")[1]);
-                            current.Parent = temp;
-                            temp = current;
+                            _current = _current.contents.OfType<Directory>().First(x => x.Name == a.Split("==")[1]);
+                            _current.Parent = temp;
+                            temp = _current;
                             break;
+                        // parent folder
                         case string a when a.Contains(".."):
-                            current = current.Parent ?? current;
+                            _current = _current.Parent ?? _current;
 
                             break;
+                        // stop
                         case "stop": break;
                         default:
                             Console.WriteLine("Instruction non comprise, veuillez vérifier la syntaxe de la commande ou le parametre");
                             break;
                     }
                 }
+                // Error when typing the choice (like i==banana)
                 catch { Console.WriteLine("erreur, veuillez recommencer"); }
 
 

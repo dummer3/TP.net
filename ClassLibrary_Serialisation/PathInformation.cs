@@ -6,18 +6,24 @@ using System.Text;
 
 namespace ClassLibrary_Serialisation
 {
-    public static class Global
+    /// <summary>
+    /// <c>PathInformation</c>: static class to manage the Path of all our files, and verify exceptions
+    /// </summary>
+    public static class PathInformation
     {
+        /// <value> Path Where our files must be stock</value>
         public static string Path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\gestionnaireContact\\";
 
-        static Global(){
+        /// <summary>
+        /// Verify is the folder where we work exist, if not create it
+        /// </summary>
+        static PathInformation(){
             try
             {
-                if (!Directory.Exists(Global.Path))
+                if (!Directory.Exists(PathInformation.Path))
                 {
-                    DirectoryInfo di = Directory.CreateDirectory(Global.Path);
-                    Console.WriteLine("The directory was created successfully at {0}.", Directory.GetCreationTime(Global.Path));
-
+                    DirectoryInfo di = Directory.CreateDirectory(PathInformation.Path);
+                    Console.WriteLine("The directory was created successfully at {0}.", Directory.GetCreationTime(PathInformation.Path));
                 }
             }
             catch (Exception e)
@@ -26,11 +32,23 @@ namespace ClassLibrary_Serialisation
             }
         }
 
-        public static string entireFileName(string fileName)
+        /// <summary>
+        /// Return the absolute path using the file name
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        public static string EntireFileName(string fileName)
         {
-            return $"{Global.Path}{fileName}_{Environment.UserName}_{WindowsIdentity.GetCurrent().User}";
+            return $"{PathInformation.Path}{fileName}_{Environment.UserName}_{WindowsIdentity.GetCurrent().User}";
         }
 
+        /// <summary>
+        /// Verify a <c>Func</c> using a file don't throw an exception
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="func"> function to execute</param>
+        /// <param name="fileName"> name of the file we work on</param>
+        /// <returns> The result of the function s</returns>
         public static T VerificationFile<T>(Func<string, T> func, string fileName)
         {
             try
@@ -53,6 +71,12 @@ namespace ClassLibrary_Serialisation
                 throw (ex);
             }
         }
+        /// <summary>
+        /// Verify an <c>Action</c> using a file don't throw an exception
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="act"> Action to execute</param>
+        /// <param name="fileName"> name of the file we work on</param>
         public static void VerificationFile(Action<string> act, string fileName)
         {
             try

@@ -1,54 +1,86 @@
-﻿using ClassLibrary_Contact;
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Security.Principal;
 using System.Xml.Serialization;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace ClassLibrary_Serialisation
 {
-    public abstract class GestionnaireFichierFact<T>
+    /// <summary>
+    /// <c>GestionnaireFichierFact</c>: Abstract class to describe serializer manager
+    /// </summary>
+    /// <typeparam name="T"> The class to serialize</typeparam>
+    public abstract class SerializationManagerFact<T>
     {
+        // Can't put an IFormatter formatter here because XMLSerializer is not one.
+
+        /// <summary>
+        /// Serialize an object
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns> our serialized object</returns>
         public abstract string Serialization(T obj);
-        public abstract T Deserialization(string fileName);
+        /// <summary>
+        /// Deserialize an object
+        /// </summary>
+        /// <param name="str"> the string which represent our object </param>
+        /// <returns> Our object</returns>
+        public abstract T Deserialization(string str);
 
     }
 
-
-    public class GestionnaireBinaire<T> : GestionnaireFichierFact<T>
+    /// <summary>
+    /// Manager for binary Serialization
+    /// </summary>
+    ///  <inheritdoc/>
+    public class BinarySerializationManager<T> : SerializationManagerFact<T>
     {
         private readonly IFormatter formatter;
-        public GestionnaireBinaire()
+
+        /// <summary>
+        /// Default Constructor
+        /// </summary>
+        public BinarySerializationManager()
         {
             formatter = new BinaryFormatter();
         }
 
+        /// <inheritdoc/>
         public override string Serialization(T obj)
         {
             MemoryStream memoryStream = new MemoryStream();
             formatter.Serialize(memoryStream, obj);
             memoryStream.Flush();
             memoryStream.Position = 0;
-            
+
             return Convert.ToBase64String(memoryStream.ToArray());
         }
 
+        /// <inheritdoc/>
         public override T Deserialization(string s)
         {
             MemoryStream memoryStream = new MemoryStream(Convert.FromBase64String(s));
             return (T)formatter.Deserialize(memoryStream);
         }
     }
-    public class GestionnaireXML<T> : GestionnaireFichierFact<T>
+
+    /// <summary>
+    /// Manager for XML Serialization
+    /// </summary>
+    ///  <inheritdoc/>
+    public class XMLSerializationManager<T> : SerializationManagerFact<T>
     {
         readonly XmlSerializer formatter;
-        public GestionnaireXML()
+
+        /// <summary>
+        /// Default Constructor
+        /// </summary>
+        public XMLSerializationManager()
         {
             formatter = new XmlSerializer(typeof(T));
         }
+
+        /// <inheritdoc/>
         public override string Serialization(T obj)
         {
             using StringWriter writer = new StringWriter();
@@ -56,6 +88,8 @@ namespace ClassLibrary_Serialisation
             Deserialization(writer.ToString());
             return writer.ToString();
         }
+
+        /// <inheritdoc/>
         public override T Deserialization(string s)
         {
             using StringReader reader = new StringReader(s);
