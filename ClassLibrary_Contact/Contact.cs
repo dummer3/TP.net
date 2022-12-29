@@ -9,52 +9,41 @@ namespace ClassLibrary_Contact
     public enum Lien { AMI, COLLEGUE, RELATION, RESEAU, NONDEFINI };
 
     [Serializable]
-    public class Contact : IStockable
+    public class Contact : Contenant
     {
         public string Nom { get; set; }
         public string Prenom { get; set; }
 
-        public MailAddress courriel; 
-        public string SetCourrielStr { 
-            set
-            {
-                try
+        private string courriel; 
+        public static string courrielStr(string s){
+            string r = "unknown";    
+            try
                 {
-                    MailAddress m = new MailAddress(value);
-                    courriel = m;
+                MailAddress m = new MailAddress(s);
+                r = s;
                 }
                 catch (FormatException exception)
                 {
                     Console.WriteLine($"Erreur, Email non valide: {exception.Message}");
-                }
-            } 
+                } 
+            return r;
         }
-        public MailAddress GetCourriel{ get; }
+
 
         public string Societe { get; set; }
         public Lien Lien { get; set;}
-        public DateTime CreationTime { get; set; }
-        public DateTime ModificationTime { get; set; }
 
-        public Contact(string nom, string prenom, MailAddress courriel, string societe, Lien lien, DateTime creationTime, DateTime modificationTime)
+        public Contact(string nom, string prenom, string courriel, string societe, Lien lien, DateTime creationTime, DateTime modificationTime) : base(creationTime, modificationTime)
         {
             Nom = nom;
             Prenom = prenom;
-            this.courriel = courriel;
+            this.courriel = courrielStr(courriel);
             Societe = societe;
             Lien = lien;
-            CreationTime = creationTime;
-            ModificationTime = modificationTime;
         }
 
-        public Contact()
-        {
-            Nom = Prenom = Societe = "___";
-            SetCourrielStr = "____@__.___";
-            Lien = Lien.NONDEFINI;
-            CreationTime = ModificationTime = DateTime.Now;
-        }
-
+        public Contact() : this("___", "___", "___@___.___", "___", Lien.NONDEFINI, DateTime.Now, DateTime.Now){}
+        public Contact(string nom, string prenom, string courriel, string societe, Lien lien) : this(nom,prenom,courriel,societe,lien, DateTime.Now, DateTime.Now) { }
         public override string ToString()
         {
             return $" Contact {Nom} {Prenom} -- Email {courriel} -- Lien {Lien} -- Societe {Societe} {System.Environment.NewLine}";

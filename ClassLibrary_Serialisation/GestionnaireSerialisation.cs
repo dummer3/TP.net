@@ -1,15 +1,20 @@
 ﻿using ClassLibrary_Contact;
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.Principal;
 using System.Xml.Serialization;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ClassLibrary_Serialisation
 {
     public abstract class GestionnaireFichierFact<T>
     {
-        public abstract void Serialization(string fileName, T obj);
+        public abstract string Serialization(T obj);
         public abstract T Deserialization(string fileName);
+
     }
 
 
@@ -21,19 +26,20 @@ namespace ClassLibrary_Serialisation
             formatter = new BinaryFormatter();
         }
 
-        public override void Serialization(string fileName, T obj)
+        public override string Serialization(T obj)
         {
-            Stream stream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
-            formatter.Serialize(stream, obj);
-            stream.Close();
+            MemoryStream memoryStream = new MemoryStream();
+            formatter.Serialize(memoryStream, obj);
+            memoryStream.Flush();
+            memoryStream.Position = 0;
+            
+            return Convert.ToBase64String(memoryStream.ToArray());
         }
 
-        public override T Deserialization(string fileName)
+        public override T Deserialization(string s)
         {
-            Stream readStream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
-            T d = (T)formatter.Deserialize(readStream);
-            readStream.Close();
-            return d;
+            MemoryStream memoryStream = new MemoryStream(Convert.FromBase64String(s));
+            return (T)formatter.Deserialize(memoryStream);
         }
     }
     public class GestionnaireXML<T> : GestionnaireFichierFact<T>
@@ -43,18 +49,17 @@ namespace ClassLibrary_Serialisation
         {
             formatter = new XmlSerializer(typeof(T));
         }
-        public override void Serialization(string fileName, T obj)
+        public override string Serialization(T obj)
         {
-            TextWriter writer = new StreamWriter(fileName);
+            using StringWriter writer = new StringWriter();
             formatter.Serialize(writer, obj);
-            writer.Close();
+            Deserialization(writer.ToString());
+            return writer.ToString();
         }
-        public override T Deserialization(string fileName)
+        public override T Deserialization(string s)
         {
-            TextReader reader = new StringReader(fileName);
-            T d = (T)formatter.Deserialize(reader);
-            reader.Close();
-            return d;
+            using StringReader reader = new StringReader(s);
+            return (T)formatter.Deserialize(reader);
         }
     }
 }

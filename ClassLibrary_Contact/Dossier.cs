@@ -1,32 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Xml.Serialization;
 
 namespace ClassLibrary_Contact
 {
     [Serializable]
-    public class Dossier : IStockable
+    public class Dossier : Contenant
     {
         public string Nom { get; set; }
-        public DateTime CreationTime { get; set; }
-        public DateTime ModificationTime { get; set; }
+
+        public List<Contenant> contents;
+        
         [XmlIgnore]
-        public List<IStockable> contents;
+        public Dossier Parent { get; set; }
 
-
-        public Dossier() : this("root", DateTime.Now, DateTime.Now) { }
+        public Dossier() : this("root", DateTime.Now, DateTime.Now) { Parent = this;}
         public Dossier(string nom): this(nom, DateTime.Now, DateTime.Now){}
-        public Dossier(string nom, DateTime creationTime, DateTime modificationTime)
+        public Dossier(string nom, DateTime creationTime, DateTime modificationTime) : base(creationTime, modificationTime)
         {
             Nom = nom;
-            CreationTime = creationTime;
-            ModificationTime = modificationTime;
-            contents = new List<IStockable>();
+            contents = new List<Contenant>();
         }
 
-        public void AddStockable(IStockable st)
+        public void AddStockable(Contenant contenant)
         {
-            contents.Add(st);
+            contents.Add(contenant);
         }
 
         public override string ToString()

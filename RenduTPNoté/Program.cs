@@ -32,6 +32,8 @@ namespace ConsoleVersion
 
                     case "sortir":
                     case "quitter":
+                    case "exit":
+                    case "quit":
                         stop = true;
                         break;
                     case "afficher":
@@ -52,6 +54,7 @@ namespace ConsoleVersion
                         break;
                     case "changerdedossier":
                     case "changerdossier":
+                        g.ChangerCurrent();
                         break;
                     default:
                         Console.WriteLine("Instruction Inconnue.");
